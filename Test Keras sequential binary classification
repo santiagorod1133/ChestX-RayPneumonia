@@ -1,0 +1,59 @@
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from tensorflow import keras
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, f1_score
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Load your combined CSV file
+combined_csv_file = '/Users/location/combinedtest.csv'
+df_combined = pd.read_csv(combined_csv_file)
+
+# Split the DataFrame into features (X) and labels (y)
+X = df_combined.iloc[:, :-1].values  # Features
+y = df_combined.iloc[:, -1].values  # Labels
+
+# Set a seed for reproducibility
+tf.random.set_seed(1234)
+
+# Split the data into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=1234)
+
+# Define the Keras model
+model = keras.Sequential([
+    keras.layers.Input(shape=(X_train.shape[1],)),
+    keras.layers.Dense(128, activation='relu'),
+    keras.layers.Dense(64, activation='relu'),
+    keras.layers.Dense(2, activation='softmax')
+])
+
+# Compile the model
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+# Define early stopping
+early_stopping = keras.callbacks.EarlyStopping(
+    monitor='val_loss',
+    patience=10,
+    restore_best_weights=True
+)
+
+# Train the model on your data with early stopping
+history = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_split=0.2, callbacks=[early_stopping])
+
+
+# Use the trained model to predict the labels for the testing data
+y_pred = model.predict(X_test)
+y_pred_classes = np.argmax(y_pred, axis=1)
+
+# Calculate the F1 score
+f1 = f1_score(y_test, y_pred_classes, average='weighted')
+print(f"F1 Score on Testing Data: {f1}")
+
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred_classes)
+sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
+plt.xlabel('Predicted')
+plt.ylabel('True')
+plt.show()
